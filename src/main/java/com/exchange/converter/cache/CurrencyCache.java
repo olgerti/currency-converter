@@ -11,8 +11,8 @@ import java.util.Set;
 
 @Component
 public class CurrencyCache {
-    private Set<String> allowedCurrencies;
     private final ExternalApiService externalApiService;
+    private final Set<String> allowedCurrencies;
 
     @Autowired
     public CurrencyCache(ExternalApiService externalApiService) throws URISyntaxException {
