@@ -23,7 +23,7 @@ public class CurrencyValidationService {
 
 
     public boolean validateAmount(BigDecimal amount) throws InvalidAmountException {
-        if (amount == null) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException();
         }
 
