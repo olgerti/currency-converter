@@ -24,6 +24,14 @@ public class CurrencyConversionController {
     @Autowired
     private CurrencyConversionService currencyConversionService;
 
+    /**
+     * Converts the specified amount from the base currency to the target currency.
+     *
+     * @param baseCurrency   The base currency code.
+     * @param targetCurrency The target currency code.
+     * @param amount         The amount to convert.
+     * @return The response entity containing the converted currency information or an error response.
+     */
     @GetMapping
     public ResponseEntity<CurrencyConversionResponseDto> convertCurrency(
             @RequestParam String baseCurrency,
