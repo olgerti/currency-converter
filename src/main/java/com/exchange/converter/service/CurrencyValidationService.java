@@ -15,7 +15,7 @@ public class CurrencyValidationService {
     private CurrencyCache currencyCache;
 
     public boolean validateCurrency(String currencyCode) throws InvalidCurrencyException {
-        if(!currencyCache.isValidCurrency(currencyCode))
+        if (!currencyCache.isValidCurrency(currencyCode))
             throw new InvalidCurrencyException();
 
         return true;
@@ -23,7 +23,7 @@ public class CurrencyValidationService {
 
 
     public boolean validateAmount(BigDecimal amount) throws InvalidAmountException {
-        if(amount == null) {
+        if (amount == null) {
             throw new InvalidAmountException();
         }
 

@@ -1,6 +1,6 @@
 package com.exchange.converter.exception;
 
-public class InvalidCurrencyException extends Exception{
+public class InvalidCurrencyException extends Exception {
     public InvalidCurrencyException() {
         super("Invalid currency provided");
     }

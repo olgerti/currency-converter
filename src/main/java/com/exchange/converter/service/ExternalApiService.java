@@ -26,9 +26,7 @@ public class ExternalApiService {
     private final HttpHeaders headers;
 
     @Autowired
-    public ExternalApiService(RestTemplateBuilder builder,
-                              @Value("${currency.converter.api.url}") String currencyBasePathUrl,
-                              @Value("${currency.converter.api.key}") String currencyApiKey) {
+    public ExternalApiService(RestTemplateBuilder builder, @Value("${currency.converter.api.url}") String currencyBasePathUrl, @Value("${currency.converter.api.key}") String currencyApiKey) {
         this.restTemplate = builder.build();
         this.currencyBasePathUrl = currencyBasePathUrl;
         this.currencyApiKey = currencyApiKey;
@@ -48,16 +46,10 @@ public class ExternalApiService {
 
 
     public ConversionRateResponseDto getExchangeRate(CurrencyConversionRequestDto currencyConversionRequestDTO) {
-        String url = UriComponentsBuilder.fromUriString(currencyBasePathUrl)
-                .path("/live")
-                .queryParam("source", currencyConversionRequestDTO.getBaseCurrency())
-                .queryParam("currencies", currencyConversionRequestDTO.getTargetCurrency())
-                .build()
-                .toUriString();
+        String url = UriComponentsBuilder.fromUriString(currencyBasePathUrl).path("/live").queryParam("source", currencyConversionRequestDTO.getBaseCurrency()).queryParam("currencies", currencyConversionRequestDTO.getTargetCurrency()).build().toUriString();
 
         RequestEntity<Void> requestEntity = new RequestEntity<>(headers, HttpMethod.GET, URI.create(url));
-        ResponseEntity<ConversionRateResponseDto> response =
-                restTemplate.exchange(requestEntity, ConversionRateResponseDto.class);
+        ResponseEntity<ConversionRateResponseDto> response = restTemplate.exchange(requestEntity, ConversionRateResponseDto.class);
         return response.getBody();
     }
 }

@@ -39,8 +39,7 @@ public class CurrencyConversionService {
                 externalApiService.getExchangeRate(currencyConversionRequestDTO);
 
         exchangeRate = conversionRateResponseDto.getQuotes()
-                .get(currencyConversionRequestDTO.getBaseCurrency() + ""
-                + currencyConversionRequestDTO.getTargetCurrency());
+                .get(currencyConversionRequestDTO.getBaseCurrency() + currencyConversionRequestDTO.getTargetCurrency());
 
         exchangeRateCache.putExchangeRate(cacheKey, exchangeRate);
 
@@ -64,10 +63,10 @@ public class CurrencyConversionService {
             response.setConvertedAmount(convertedAmount);
             response.setExchangeRate(exchangeRate);
             return response;
-        }catch (InvalidAmountException iae) {
+        } catch (InvalidAmountException iae) {
             throw new InvalidAmountException("Invalid amount: " + currencyConversionRequestDTO.getAmount());
         } catch (InvalidCurrencyException ice) {
-            throw  new InvalidCurrencyException(ice.getLocalizedMessage());
+            throw new InvalidCurrencyException(ice.getLocalizedMessage());
         }
     }
 }
