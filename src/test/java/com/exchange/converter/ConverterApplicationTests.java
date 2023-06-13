@@ -55,7 +55,6 @@ class ConverterApplicationTests {
         Mockito.when(currencyConversionService.getExchangeRate(currencyConversionRequestDto))
                 .thenReturn(BigDecimal.valueOf(90));
 
-        //fetch quotes with same tag
         MvcResult mvcResult = mockMvc.perform(get("/currency-conversion")
                         .queryParam("baseCurrency", "USD")
                         .queryParam("targetCurrency", "EUR")
