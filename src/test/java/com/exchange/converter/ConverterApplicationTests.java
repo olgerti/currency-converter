@@ -1,27 +1,20 @@
 package com.exchange.converter;
 
-import com.exchange.converter.controller.CurrencyConversionController;
 import com.exchange.converter.dto.CurrencyConversionRequestDto;
 import com.exchange.converter.dto.CurrencyConversionResponseDto;
-import com.exchange.converter.dto.ErrorResponseDto;
-import com.exchange.converter.exception.InvalidAmountException;
-import com.exchange.converter.exception.InvalidCurrencyException;
 import com.exchange.converter.service.CurrencyConversionService;
 import com.exchange.converter.service.CurrencyValidationService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
 
@@ -30,109 +23,94 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@RunWith(SpringRunner.class)
 class ConverterApplicationTests {
 
-	@InjectMocks
-	private CurrencyConversionController currencyConversionController;
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+    private MockMvc mockMvc;
 
-	@Mock
-	private CurrencyConversionService currencyConversionService;
-	@Test
-	void contextLoads() {
-	}
+    @Autowired
+    private ObjectMapper mapper;
 
-	@Autowired
-	private ObjectMapper objectMapper;
+    @Autowired
+    private CurrencyValidationService currencyValidationService;
 
-	@MockBean
-	private CurrencyValidationService currencyValidationService;
-	private MockMvc mockMvc;
+    @Autowired
+    private CurrencyConversionService currencyConversionService;
 
-	@BeforeEach
-	void setUp() {
-		mockMvc = MockMvcBuilders.standaloneSetup(currencyConversionController).build();
-	}
+    @BeforeEach
+    void setUp() {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).build();
+    }
 
-	@Test
-	void testConvertCurrency_Success() throws Exception {
-		// Arrange
-		CurrencyConversionRequestDto request = new CurrencyConversionRequestDto("USD", "EUR", BigDecimal.valueOf(100));
-		CurrencyConversionResponseDto response = new CurrencyConversionResponseDto("USD", "EUR", BigDecimal.valueOf(100), BigDecimal.valueOf(90), BigDecimal.valueOf(0.9));
-		Mockito.when(currencyConversionService.convertCurrency(request)).thenReturn(response);
+    @Test
+    void testConvertCurrency_Success() throws Exception {
 
-		// Act
-		MvcResult mvcResult = mockMvc.perform(get("/currency-conversion")
-						.param("baseCurrency", "USD")
-						.param("targetCurrency", "EUR")
-						.param("amount", "100"))
-				.andExpect(status().isOk())
-				.andReturn();
+        BigDecimal amount = BigDecimal.valueOf(100);
+        BigDecimal exchangeRate = BigDecimal.valueOf(90);
 
-		// Assert
-		String content = mvcResult.getResponse().getContentAsString();
+        CurrencyConversionRequestDto currencyConversionRequestDto
+                = new CurrencyConversionRequestDto("USD", "ALL", exchangeRate);
 
-		System.out.println("hello" + content);
-		CurrencyConversionResponseDto actualResponse = objectMapper.readValue(content, CurrencyConversionResponseDto.class);
-		assertEquals("USD", actualResponse.getBaseCurrency());
-		assertEquals("EUR", actualResponse.getTargetCurrency());
-		assertEquals(BigDecimal.valueOf(100), actualResponse.getAmount());
-		assertEquals(BigDecimal.valueOf(90), actualResponse.getConvertedAmount());
-		assertEquals(BigDecimal.valueOf(0.9), actualResponse.getExchangeRate());
-	}
+        Mockito.when(currencyConversionService.getExchangeRate(currencyConversionRequestDto))
+                .thenReturn(BigDecimal.valueOf(90));
 
-	@Test
-	void testConvertCurrency_InvalidAmount() throws Exception {
-		// Arrange
-		Mockito.doThrow(new InvalidAmountException("Invalid amount")).when(currencyValidationService).validateAmount(Mockito.any(BigDecimal.class));
+        //fetch quotes with same tag
+        MvcResult mvcResult = mockMvc.perform(get("/currency-conversion")
+                        .queryParam("baseCurrency", "USD")
+                        .queryParam("targetCurrency", "EUR")
+                        .queryParam("amount", String.valueOf(amount)))
+                .andExpect(status().isOk())
+                .andReturn();
 
-		// Act
-		MvcResult mvcResult = mockMvc.perform(get("/currency-conversion")
-						.param("baseCurrency", "USD")
-						.param("targetCurrency", "EUR")
-						.param("amount", "-100"))
-				.andExpect(status().isBadRequest())
-				.andReturn();
 
-		// Assert
-		String content = mvcResult.getResponse().getContentAsString();
-		ErrorResponseDto errorResponse = objectMapper.readValue(content, ErrorResponseDto.class);
-		assertEquals("Invalid amount", errorResponse.getMessage());
-		assertEquals(400, errorResponse.getStatus());
-	}
+        String response = mvcResult.getResponse().getContentAsString();
+        CurrencyConversionResponseDto currencyConversionResponseDto = mapper.readValue(response, new TypeReference<>() {
+        });
 
-	@Test
-	void testConvertCurrency_InvalidCurrency() throws Exception {
-		// Arrange
-		Mockito.doThrow(new InvalidCurrencyException("Invalid currency")).when(currencyValidationService).validateCurrency(Mockito.anyString());
+        assertEquals("USD", currencyConversionResponseDto.getBaseCurrency());
+        assertEquals("EUR", currencyConversionResponseDto.getTargetCurrency());
+        assertEquals(BigDecimal.valueOf(100), currencyConversionResponseDto.getAmount());
+        assertEquals(amount.multiply(exchangeRate), currencyConversionResponseDto.getConvertedAmount());
+    }
 
-		// Act
-		MvcResult mvcResult = mockMvc.perform(get("/currency-conversion")
-						.param("baseCurrency", "XYZ")
-						.param("targetCurrency", "XYZ")
-						.param("amount", "100"))
-				.andExpect(status().isBadRequest())
-				.andReturn();
+    @Test
+    void testConvertCurrency_InvalidAmount() throws Exception {
 
-		// Assert
-		String content = mvcResult.getResponse().getContentAsString();
-		ErrorResponseDto errorResponse = objectMapper.readValue(content, ErrorResponseDto.class);
-		assertEquals("Invalid currency", errorResponse.getMessage());
-		assertEquals(400, errorResponse.getStatus());
-	}
+        String amount = "-100";
 
-	@Test
-	void testConvertCurrency_InternalServerError() throws Exception {
-		// Arrange
-		Mockito.when(currencyConversionService.convertCurrency(Mockito.any(CurrencyConversionRequestDto.class))).thenThrow(new RuntimeException("Internal server error"));
+        MvcResult mvcResult = mockMvc.perform(get("/currency-conversion")
+                        .param("baseCurrency", "USD")
+                        .param("targetCurrency", "EUR")
+                        .param("amount", amount))
+                .andExpect(status().isBadRequest())
+                .andReturn();
 
-		// Act
-		mockMvc.perform(get("/currency-conversion")
-						.param("baseCurrency", "USD")
-						.param("targetCurrency", "EUR")
-						.param("amount", "100"))
-				.andExpect(status().isInternalServerError());
-	}
+        String response = mvcResult.getResponse().getContentAsString();
+        CurrencyConversionResponseDto currencyConversionResponseDto = mapper.readValue(response, new TypeReference<>() {
+        });
+        System.out.println(currencyConversionResponseDto.getError().getMessage());
+        assertEquals("Invalid amount: " + amount, currencyConversionResponseDto.getError().getMessage());
+        assertEquals(400, currencyConversionResponseDto.getError().getStatus());
 
+    }
+
+    @Test
+    void testConvertCurrency_InvalidCurrency() throws Exception {
+        // Act
+        MvcResult mvcResult = mockMvc.perform(get("/currency-conversion")
+                        .param("baseCurrency", "XYZ")
+                        .param("targetCurrency", "EUR")
+                        .param("amount", "100"))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String response = mvcResult.getResponse().getContentAsString();
+        CurrencyConversionResponseDto currencyConversionResponseDto = mapper.readValue(response, new TypeReference<>() {
+        });
+        System.out.println(currencyConversionResponseDto.getError().getMessage());
+        assertEquals("Invalid currency provided", currencyConversionResponseDto.getError().getMessage());
+        assertEquals(400, currencyConversionResponseDto.getError().getStatus());
+    }
 
 }
